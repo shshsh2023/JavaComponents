@@ -1,4 +1,4 @@
-package com.song.componentdevelopment.videoUpload;
+package com.song.videostream.videoUpload;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.RandomAccessFile;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -38,7 +36,7 @@ public class PlayerController {
 
 
     @GetMapping("/play/{filename}")
-    public ResponseEntity<byte[]> play(@PathVariable String filename) {
+    public ResponseEntity<byte[]> play(@PathVariable("filename") String filename) {
         File file = new File(basePath + filename);
 
         if (!file.exists()) {
@@ -64,7 +62,7 @@ public class PlayerController {
     }
 
     @GetMapping("/stream/{filename}")
-    public ResponseEntity<byte[]> streamVideo(@RequestHeader HttpHeaders headers, @PathVariable String filename) {
+    public ResponseEntity<byte[]> streamVideo(@RequestHeader HttpHeaders headers, @PathVariable("filename") String filename) {
         if (!StringUtils.hasText(filename)) return null;
 
         File file = new File(basePath + filename);

@@ -1,10 +1,10 @@
-package com.song.componentdevelopment;
+package com.song.videostream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ComponentDevelopmentApplicationTests {
+class VideoStreamTests {
 
     @Test
     void contextLoads() {

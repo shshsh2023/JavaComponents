@@ -1,13 +1,13 @@
-package com.song.componentdevelopment;
+package com.song.videostream;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ComponentDevelopmentApplication {
+public class VideoStream {
 
     public static void main(String[] args) {
-        SpringApplication.run(ComponentDevelopmentApplication.class, args);
+        SpringApplication.run(VideoStream.class, args);
     }
 
 }
