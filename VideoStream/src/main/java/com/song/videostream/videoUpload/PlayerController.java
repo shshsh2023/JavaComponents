@@ -29,6 +29,9 @@ public class PlayerController {
     @Value("${upload.dir}")
     private String basePath;
 
+    //固定读取大小为5MB
+    private static final int READ_SIZE = 5*1024*1024;
+
     @GetMapping("")
     public String get() {
         return "player";
@@ -42,15 +45,10 @@ public class PlayerController {
         if (!file.exists()) {
             return null;
         }
-
         try (FileInputStream fileInputStream = new FileInputStream(file)) {
-
             byte[] bytes = fileInputStream.readAllBytes();
-
-
             return ResponseEntity
                     .ok()
-//                    .header("Content-Disposition", "attachment;filename=test.mp4")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(bytes);
 
@@ -68,49 +66,47 @@ public class PlayerController {
         File file = new File(basePath + filename);
         if (!file.exists()) return null;
 
+        //文件长度
         long length = file.length();
-        System.out.println(length);
+
         List<HttpRange> ranges = headers.getRange();
-//        System.out.println("range s:" + ranges.get(0).getRangeStart(length));
-//        System.out.println("range e:" + ranges.get(0).getRangeEnd(length));
         try (RandomAccessFile randomAccessFile = new RandomAccessFile(file.getPath(), "r")) {
 
-            int size_read = 5 * 1024 * 1024;   // 20M
-            byte[] bytes = new byte[size_read];
+            if (ranges.isEmpty()) {
+                byte[] bytes = new byte[READ_SIZE];
 
-//            if (ranges.isEmpty()) {
-//                //固定每次读取文件大小
-//                randomAccessFile.read(bytes, 0, size_read);
-//
-//                return ResponseEntity.status(206)
-//                        .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(20 * 1024 * 1024))
-//                        .header(HttpHeaders.CONTENT_TYPE, "video/mp4")
-//                        .header(HttpHeaders.CONTENT_RANGE, "bytes " + 0 + "-" + (size_read - 1) + "/" + length)
-////                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-//                        .body(bytes);
-//            }
+                int read_length = (int) Math.min(READ_SIZE, length);
+                //固定每次读取文件大小
+                randomAccessFile.read(bytes, 0, read_length);
+
+                return ResponseEntity.status(206)
+                        .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(read_length))
+                        .header(HttpHeaders.CONTENT_TYPE, "video/mp4")
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes " + 0 + "-" + (read_length - 1) + "/" + length)
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .body(bytes);
+            }
 
             HttpRange range = ranges.get(0);
             long start = range.getRangeStart(length);
-            long end = Math.min((start + size_read), length);
-//            long end = range.getRangeEnd(length);
+            long end = Math.min((start + READ_SIZE), length);
 
             randomAccessFile.seek(start);
 
             byte[] partialVideo = new byte[(int) (end-start)];
 
             randomAccessFile.read(partialVideo, 0, (int) (end-start));
+
             return ResponseEntity.status(206)
                     .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(end - start))
                     .header(HttpHeaders.CONTENT_TYPE, "video/mp4")
                     .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + (end-1) + "/" + length)
-//                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(partialVideo);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-
 
         return null;
     }
