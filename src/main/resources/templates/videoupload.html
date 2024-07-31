@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xml:lang="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" http-equiv="content-type" content="text/html;charset=UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<form  method="post"  th:action="@{/video/upload}" enctype="multipart/form-data">
+    <input type="file" name="file" >
+    <input type="submit" value="提交">
+</form>
+
+<span style="color: red" th:text="${flag}"></span>
+
+<br>
+
+<button id="download"><a href="video/download/test.mp4">下载</a></button>
+<br>
+<a th:href="@{/player}"> 去播放页面 </a>
+
+
+<!--<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>-->
+<!--<script>-->
+<!--    $(document).ready(function(){-->
+<!--        $("#download").click(() => {-->
+<!--            $.get('video/download/test.mp4')-->
+<!--        })-->
+<!--    });-->
+<!--</script>-->
+
+</body>
+</html>

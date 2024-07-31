@@ -1,0 +1,13 @@
+
+spring:
+    freemarker:
+        cache: false
+    application:
+        name: ComponentDevelopment
+    servlet:
+        multipart:
+            max-file-size: 3GB
+            max-request-size: 3GB
+
+upload:
+    dir: D:\\javaPrj\\video\\
