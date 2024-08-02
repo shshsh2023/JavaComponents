@@ -8,10 +8,16 @@ spring:
         multipart:
             max-file-size: 3GB
             max-request-size: 3GB
+    thymeleaf:
+        encoding: UTF-8
+        cache: true
 upload:
-    dir: D:\\javaPrj\\video\\
+    dir: D:\\video\\
+    download_dir: D:\\javaPrj\\video\\
 
 server:
     port: 5432
+
+
 
 

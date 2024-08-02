@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+</head>
+<body>
+
+<h1>文件分片上传</h1>
+<form method="post" th:action="@{/video/upload}" enctype="multipart/form-data" id="uploadForm">
+    <input type="file" name="file" id="fileInput">
+    <input type="button" value="计算文件MD5" onclick="calculateFileMd5()">
+    <input type="button" value="上传" onclick="uploadFile()">
+    <input type="button" value="检测文件完整性" onclick="checkFile()">
+</form>
+
+<p>
+    文件MD5:
+    <span id="fileMd5"></span>
+</p>
+<p>
+    上传结果:
+    <span id="uploadResult"></span>
+</p>
+<p>
+    检测文件完整性:
+    <span id="checkFileRes"></span>
+</p>
+
+<script>
+    //每片大小
+    const chunkSize = 10 * 1024 * 1024; //10M
+    let uploadResult = document.getElementById("uploadResult");
+    let fileMd5Span = document.getElementById("fileMd5");
+    let checkFileRes = document.getElementById("checkFileRes");
+    let fileMd5;
+    //保存文件名
+    let filename;
+    //获取到文件
+    let fileArr;
+
+    const calculateFileMd5 = () => {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            uploadResult.innerText = '请先选择文件';
+            return;
+        }
+
+        getFileMd5(file).then((md5) => {
+            console.info(md5);
+            fileMd5 = md5;
+            fileMd5Span.innerText = md5;
+        });
+    }
+
+    const uploadFile = () => {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+            uploadResult.innerText = '请先选择文件';
+            return;
+        }
+        if (!fileMd5) {
+            checkFileRes.innerText = '请先检查文件完整性';
+            return;
+        }
+
+        //获取到文件
+        fileArr = sliceFile(file);
+
+        //保存文件名
+        filename = file.name;
+
+        fileArr.forEach((value, index) => {
+            //创建formdata对象
+            let data = new FormData();
+            data.append("totalNumber", fileArr.length);
+            data.append("chunkSize", chunkSize);
+            data.append("chunkNumber", index)
+            data.append("md5", fileMd5);
+            data.append("file", new File([value], filename));
+            upload(data);
+        })
+    }
+
+    /**
+     * 计算MD5值
+     */
+    const getFileMd5 = (file) => {
+        return new Promise((resolve, reject) => {
+            let fileReader = new FileReader();
+            fileReader.onload = (ev) => {
+                let fileMde = SparkMD5.ArrayBuffer.hash(ev.target.result);
+                resolve(fileMde);
+            }
+            fileReader.readAsArrayBuffer(file);
+        })
+    }
+
+    const upload = (data) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                uploadResult.append('上传成功分片: ' + data.get("chunkNumber") + '\t');
+                console.info(xhr.responseText)
+            }
+        }
+
+        xhr.onerror = () => {
+            uploadResult.innerText = '上传失败';
+        }
+
+        xhr.open('POST', 'fragment/upload', true);
+        xhr.send(data);
+    }
+
+    const sliceFile = (file) => {
+        const chunks = [];
+        let start = 0;
+        let end;
+
+        while (start < file.size) {
+            end = Math.min(start + chunkSize, file.size);
+            chunks.push(file.slice(start, end));
+            start = end;
+        }
+
+        return chunks;
+    }
+
+    const checkFile = () => {
+        var xhr = new XMLHttpRequest();
+        // 当上传完成时调用
+        xhr.onload = function () {
+            if (xhr.status !== 200) {
+                checkFileRes.innerHTML = '检测文件完整性失败:' + xhr.responseText;
+            }
+            checkFileRes.innerHTML = '检测文件完整性成功:' + xhr.responseText;
+            //检查是否有分片上传失败
+            let parse = JSON.parse(xhr.responseText);
+            if (parse['chunks'] === undefined) return;
+
+            let chunks = parse['chunks'];
+            //遍历返回的标识
+            for (let i = 0; i < chunks.length; i++) {
+                console.info(chunks[i])
+                //需要重新上传
+                if (chunks[i] === '0') {
+                    //创建formdata对象
+                    let data = new FormData();
+                    data.append("totalNumber", fileArr.length);
+                    data.append("chunkSize", chunkSize);
+                    data.append("chunkNumber", i)
+                    data.append("md5", fileMd5);
+                    data.append("file", new File([fileArr[i]], filename));
+                    upload(data);
+                }
+            }
+        }
+
+        xhr.onerror = function () {
+            checkFileRes.innerHTML = '检测文件完整性失败';
+        }
+
+        // 发送请求
+        xhr.open('POST', 'fragment/checkFile', true);
+        let data = new FormData();
+        data.append("md5", fileMd5)
+        xhr.send(data);
+    }
+
+</script>
+
+</body>
+</html>

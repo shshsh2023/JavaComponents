@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" xml:lang="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8" http-equiv="content-type" content="text/html;charset=UTF-8">
     <title>Title</title>
 </head>
 <body>
 
-<form  method="post"  th:action="@{/video/upload}" enctype="multipart/form-data">
-    <input type="file" name="file" >
-    <input type="submit" value="提交">
+<h1>文件上传</h1>
+<form  method="post"  th:action="@{/video/upload}" enctype="multipart/form-data" id="uploadForm">
+    <input type="file" name="file" id="fileInput">
+    <input type="button" value="提交" onclick="uploadFile()">
 </form>
+上传结果：<span id="upload_result" style="color: red"></span>
 
-<!--<span style="color: red" th:text="${flag}"></span>-->
 
-<br>
-
+<br><br><br>
 <button id="download"><a href="video/download/test.mp4">下载</a></button>
 <br>
 <a th:href="@{/player}"> 去播放页面 </a>
@@ -28,6 +28,49 @@
 <!--        })-->
 <!--    });-->
 <!--</script>-->
+
+<script>
+    const uploadResult = document.getElementById("upload_result");
+
+    function uploadFile() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+        console.log(fileInput.files);
+        if(!file) {
+            uploadResult.innerText = '文件内容不能为空!';
+            return;
+        }
+
+        var xhr = new XMLHttpRequest();
+        //处理上传进度
+        xhr.upload.onprogress = function (event){
+            var percent = 100* event.loaded / event.total;
+            uploadResult.innerText = '上传进度: ' +  percent + '%';
+        };
+
+        //当上传完成时调用
+        xhr.onload = () => {
+            if(xhr.status === 200){
+                uploadResult.innerText = '上传成功' + xhr.responseText;
+                fileInput.value = null;
+            }
+        }
+
+        xhr.onerror = ()=>{
+            uploadResult.innerText = '上传失败';
+        }
+
+        const uploadUrl = document.getElementById("uploadForm").action;
+        console.log(uploadUrl)
+
+        //发送请求
+        xhr.open('POST', uploadUrl, true);
+        var formData = new FormData();
+        formData.append('file', file);
+        xhr.send(formData);
+    }
+</script>
+
 
 </body>
 </html>

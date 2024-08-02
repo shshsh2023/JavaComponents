@@ -6,10 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -33,13 +30,10 @@ public class VideoUploadController {
     }
 
     @PostMapping("/upload")
-    public String upload(Model model, MultipartFile file) {
+    public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file) {
         if(file.isEmpty()){
-            model.addAttribute("flag", 0);
-            return "videoupload";
+            return ResponseEntity.badRequest().body("上传失败");
         }
-
-        model.addAttribute("flag", 1);
 
         File basePath = new File(uploadDir);
         if(!basePath.exists()){
@@ -54,11 +48,14 @@ public class VideoUploadController {
             throw new RuntimeException(e);
         }
 
-        return "videoupload";
+        return ResponseEntity.ok(filePath);
     }
 
-
-
+    /**
+     * 整体请求下载文件，服务器负载大
+     * @param filename
+     * @return
+     */
     @GetMapping("/download/{filename}")
     public ResponseEntity<byte[]> download(@PathVariable("filename") String filename){
         File basePath = new File(uploadDir);

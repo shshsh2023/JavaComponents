@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/spark-md5/3.0.2/spark-md5.min.js"></script>
+</head>
+<body>
+
+<h1>文件分片下载</h1>
+<form method="post" th:action="@{/video/d}" enctype="multipart/form-data" id="uploadForm">
+    <input type="text" name="filename" id="filename" placeholder="请输入需要下载的文件名">
+    <input type="button" value="下载" onclick="downloadFile()">
+</form>
+
+<p>
+    下载结果:
+    <span id="downloadResult"></span>
+</p>
+
+
+<script>
+    //每片大小
+    const chunkSize = 5 * 1024 * 1024; //5M 请求长度
+    let downloadResult = document.getElementById("downloadResult");
+    //保存文件名
+    let filename;
+    //获取到文件
+    let fileArr = [];
+    // 最终合并的文件
+    let blob;
+    // 文件end
+    let start = 0, end = 0, requireSize = 100, curIndex = 0;
+
+
+    const downloadFile = async () => {
+        filename = document.getElementById("filename").value;
+
+        if (!filename) {
+            downloadResult.innerText = '请先输入文件名';
+            return;
+        }
+
+        //发送一个探测包，探测文件大小
+        await download();
+        requireSize = chunkSize;
+        //获取后续数据
+        while (start < end) {
+            await download()
+        }
+
+        mergeChunks()
+    }
+
+    const mergeChunks = ()=>{
+        blob = new Blob(fileArr, { type: "application/octet-stream" });
+        const url =  window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        // 在短暂延迟后移除 <a> 元素，并释放 Blob 对象的 URL
+        setTimeout(() => {
+            document.body.removeChild(a);   // 从文档中移除 <a> 元素
+            window.URL.revokeObjectURL(url);  // 释放 URL 对象
+        }, 0);
+    }
+
+    const download = () => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+
+            xhr.onload = () => {
+                if (xhr.status === 206) {
+                    downloadResult.append('数据分片' + curIndex + '\t ');
+                    const regex = /(\d+)-(\d+)\/(\d+)/;
+                    let regExpMatchArray = xhr.getResponseHeader('Content-Range').match(regex);
+                    start = parseInt(regExpMatchArray[2]) + 1;
+                    end = parseInt(regExpMatchArray[3]) - 1;
+                    fileArr[curIndex] = xhr.response;
+                    curIndex++;
+                    resolve();
+                } else {
+                    downloadResult.innerText = '出错';
+                    reject(new Error('下载出错'));
+                }
+            }
+
+            xhr.onerror = () => {
+                uploadResult.innerText = '下载失败';
+            }
+
+            xhr.open('GET', '/fragment/download/' + filename, true);
+            xhr.responseType = 'blob';
+            xhr.setRequestHeader("Range", `bytes=${start}-${requireSize + start - 1}`)
+            xhr.send();
+        })
+    }
+</script>
+
+</body>
+</html>

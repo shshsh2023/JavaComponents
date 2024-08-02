@@ -1,10 +1,7 @@
 package com.song.videostream.videoUpload;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpRange;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +15,8 @@ import java.io.RandomAccessFile;
 import java.util.List;
 
 /**
+ * 包括了直接传输和流式传输
+ *
  * @author song
  * @version 0.0.1
  * @date 2024/7/27 15:27
@@ -26,11 +25,13 @@ import java.util.List;
 @RequestMapping("/player")
 public class PlayerController {
 
-    @Value("${upload.dir}")
+    @Value("${upload.download_dir}")
     private String basePath;
 
+    private static int read_times = 0;
+
     //固定读取大小为5MB
-    private static final int READ_SIZE = 5*1024*1024;
+    private static final int READ_SIZE = 5 * 1024 * 1024;
 
     @GetMapping("")
     public String get() {
@@ -38,6 +39,13 @@ public class PlayerController {
     }
 
 
+    /**
+     * 前端video标签内直接请求视屏文件，会全部请求下来才可以用
+     * 服务器端压力大
+     *
+     * @param filename
+     * @return
+     */
     @GetMapping("/play/{filename}")
     public ResponseEntity<byte[]> play(@PathVariable("filename") String filename) {
         File file = new File(basePath + filename);
@@ -59,6 +67,13 @@ public class PlayerController {
         return null;
     }
 
+    /**
+     * 流传输文件，直接到前端的video标签内， 可以按需加载，流式播放
+     *
+     * @param headers
+     * @param filename
+     * @return
+     */
     @GetMapping("/stream/{filename}")
     public ResponseEntity<byte[]> streamVideo(@RequestHeader HttpHeaders headers, @PathVariable("filename") String filename) {
         if (!StringUtils.hasText(filename)) return null;
@@ -89,18 +104,19 @@ public class PlayerController {
 
             HttpRange range = ranges.get(0);
             long start = range.getRangeStart(length);
-            long end = Math.min((start + READ_SIZE), length);
+            //每次传输固定大小的流
+            long end = Math.min(range.getRangeEnd(length), Math.min((start + READ_SIZE), length));
 
             randomAccessFile.seek(start);
 
-            byte[] partialVideo = new byte[(int) (end-start)];
+            byte[] partialVideo = new byte[(int) (end - start)];
 
-            randomAccessFile.read(partialVideo, 0, (int) (end-start));
-
+            randomAccessFile.read(partialVideo, 0, (int) (end - start));
+            Thread.sleep(1000);
             return ResponseEntity.status(206)
                     .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(end - start))
                     .header(HttpHeaders.CONTENT_TYPE, "video/mp4")
-                    .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + (end-1) + "/" + length)
+                    .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + (end - 1) + "/" + length)
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(partialVideo);
 
@@ -110,5 +126,4 @@ public class PlayerController {
 
         return null;
     }
-
 }
